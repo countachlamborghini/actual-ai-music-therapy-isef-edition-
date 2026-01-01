@@ -74,6 +74,13 @@ class _OnboardingContentState extends State<OnboardingContent> {
                         ],
                       ),
                     ),
+                    IconButton(
+                      onPressed: () => context.go('/settings'),
+                      icon: Icon(
+                        Icons.settings,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 32),

@@ -11,6 +11,68 @@
   <title>ai_music_therapy</title>
   <base href="$FLUTTER_BASE_HREF">
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" id="faceapi-script"></script>
+  <script>
+    // Audio monitoring functions
+    window.audioMonitoringActive = false;
+    window.audioContext = null;
+    window.analyser = null;
+    window.microphoneStream = null;
+    window.audioMonitoringInterval = null;
+
+    window.startAudioMonitoring = async function() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        window.microphoneStream = stream;
+        window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        window.analyser = window.audioContext.createAnalyser();
+        window.analyser.fftSize = 256;
+
+        const source = window.audioContext.createMediaStreamSource(stream);
+        source.connect(window.analyser);
+
+        window.audioMonitoringActive = true;
+
+        window.audioMonitoringInterval = setInterval(() => {
+          if (!window.audioMonitoringActive) return;
+
+          const bufferLength = window.analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          window.analyser.getByteFrequencyData(dataArray);
+
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          const average = sum / bufferLength;
+
+          // Check for abnormal noises
+          if (average > 150) {
+            if (window.handleAbnormalNoiseCallback) {
+              window.handleAbnormalNoiseCallback();
+            }
+          }
+        }, 500);
+      } catch (e) {
+        console.error('Audio monitoring initialization failed:', e);
+      }
+    };
+
+    window.stopAudioMonitoring = function() {
+      window.audioMonitoringActive = false;
+      if (window.audioMonitoringInterval) {
+        clearInterval(window.audioMonitoringInterval);
+        window.audioMonitoringInterval = null;
+      }
+      if (window.microphoneStream) {
+        window.microphoneStream.getTracks().forEach(track => track.stop());
+        window.microphoneStream = null;
+      }
+      if (window.audioContext) {
+        window.audioContext.close();
+        window.audioContext = null;
+      }
+    };
+  </script>
   <link rel="icon" type="image/png" href="favicon.png"/>
   <link rel="manifest" href="manifest.json">
 </head>

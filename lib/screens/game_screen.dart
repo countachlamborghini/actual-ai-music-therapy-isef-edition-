@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -34,7 +35,7 @@ class _GameScreenState extends State<GameScreen> {
             Text('XP: $xp', style: const TextStyle(fontSize: 20)),
             Text('Streak: $streak', style: const TextStyle(fontSize: 20)),
             const Text('Session completed!'),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/progress'), child: const Text('View Progress')),
+            ElevatedButton(onPressed: () => context.go('/progress'), child: const Text('View Progress')),
           ],
         ),
       ),

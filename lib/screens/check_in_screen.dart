@@ -1,83 +1,168 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
-class CheckInScreen extends StatefulWidget {
+class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
 
   @override
-  State<CheckInScreen> createState() => _CheckInScreenState();
+  ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-class _CheckInScreenState extends State<CheckInScreen> {
+class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   final _controller = TextEditingController();
   String _response = '';
   String _recommendedFrequency = '';
   String _frequencyDescription = '';
+  String _followUpQuestion = '';
   bool _isAnalyzing = false;
+  List<String> _conversationHistory = [];
 
   void _analyze() async {
     if (_controller.text.trim().isEmpty) return;
+
+    final userInput = _controller.text.trim();
+    final currentEmotion = ref.read(stableEmotionProvider);
+    final deepSeekService = ref.read(deepSeekTherapistProvider);
 
     setState(() {
       _isAnalyzing = true;
       _response = '';
       _recommendedFrequency = '';
       _frequencyDescription = '';
+      _followUpQuestion = '';
     });
 
-    // Simulate AI processing
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final aiResponse = await deepSeekService.getTherapeuticResponse(userInput, currentEmotion);
 
-    final text = _controller.text.toLowerCase();
-    String response;
-    String frequency;
-    String description;
+      // Parse the response to extract frequency recommendation
+      final frequencyMatch = RegExp(r'(\d+)\s*Hz').firstMatch(aiResponse);
+      if (frequencyMatch != null) {
+        final frequency = '${frequencyMatch.group(1)} Hz';
+        _recommendedFrequency = frequency;
+        _frequencyDescription = _getFrequencyDescription(frequency);
+      } else {
+        _recommendedFrequency = '432 Hz';
+        _frequencyDescription = 'Universal Healing - This balanced frequency provides gentle support for overall emotional harmony.';
+      }
 
-    if (text.contains('anxious') || text.contains('anxiety') || text.contains('worried') || text.contains('nervous')) {
-      response = 'I hear that you\'re feeling anxious. That\'s completely understandable, and we\'re here to help you find some calm.';
-      frequency = '396 Hz';
-      description = 'Liberating Guilt & Fear - This frequency helps release deep-seated anxiety and promotes emotional balance.';
-    } else if (text.contains('sad') || text.contains('depressed') || text.contains('down') || text.contains('unhappy')) {
-      response = 'I\'m sorry you\'re feeling this way. It\'s brave of you to reach out, and music therapy can be very supportive during difficult times.';
-      frequency = '396 Hz';
-      description = 'Liberating Guilt & Fear - This frequency helps process emotions and supports emotional healing.';
-    } else if (text.contains('angry') || text.contains('frustrated') || text.contains('irritated') || text.contains('mad')) {
-      response = 'Anger can be intense and overwhelming. Let\'s work together to help you find some inner peace and clarity.';
-      frequency = '174 Hz';
-      description = 'Pain Relief & Grounding - This frequency helps reduce tension and promotes emotional grounding.';
-    } else if (text.contains('stressed') || text.contains('overwhelmed') || text.contains('tired') || text.contains('exhausted')) {
-      response = 'Stress can take a toll on our well-being. Let\'s create a peaceful space for you to relax and recharge.';
-      frequency = '285 Hz';
-      description = 'Tissue & Organ Healing - This frequency supports overall relaxation and helps restore balance to your system.';
-    } else if (text.contains('happy') || text.contains('good') || text.contains('great') || text.contains('positive')) {
-      response = 'I\'m glad you\'re feeling positive! Let\'s enhance and maintain that wonderful energy.';
-      frequency = '528 Hz';
-      description = 'DNA Repair & Miracles - This frequency amplifies positive emotions and supports overall well-being.';
-    } else if (text.contains('confused') || text.contains('unclear') || text.contains('lost') || text.contains('direction')) {
-      response = 'Feeling uncertain can be challenging. Let\'s help you find some clarity and inner guidance.';
-      frequency = '432 Hz';
-      description = 'Universal Healing - This frequency promotes mental clarity and helps restore harmony.';
-    } else if (text.contains('lonely') || text.contains('alone') || text.contains('isolated')) {
-      response = 'Feeling lonely is difficult, but you\'re not alone in this moment. Let\'s create a supportive, healing space for you.';
-      frequency = '528 Hz';
-      description = 'DNA Repair & Miracles - This frequency helps foster connection and emotional healing.';
-    } else {
-      response = 'Thank you for sharing how you\'re feeling. Every emotion is valid, and we\'re here to support your journey toward well-being.';
-      frequency = '432 Hz';
-      description = 'Universal Healing - This balanced frequency provides gentle support for overall emotional harmony.';
+      // Extract follow-up question if present
+      final questionMatch = RegExp(r'[?\.]\s*([^?.]*\?)').firstMatch(aiResponse);
+      if (questionMatch != null) {
+        _followUpQuestion = questionMatch.group(1)?.trim() ?? '';
+      }
+
+      setState(() {
+        _isAnalyzing = false;
+        _response = aiResponse;
+      });
+    } catch (e) {
+      // Fallback to basic response
+      setState(() {
+        _isAnalyzing = false;
+        _response = 'Thank you for sharing. I\'m here to support you. Let\'s continue our conversation.';
+        _recommendedFrequency = '432 Hz';
+        _frequencyDescription = 'Universal Healing - This balanced frequency provides gentle support.';
+      });
     }
+  }
 
-    setState(() {
-      _isAnalyzing = false;
-      _response = response;
-      _recommendedFrequency = frequency;
-      _frequencyDescription = description;
-    });
+  String _getFrequencyDescription(String frequency) {
+    switch (frequency) {
+      case '174 Hz':
+        return 'Pain Relief & Grounding - This frequency helps reduce tension and promotes emotional grounding.';
+      case '285 Hz':
+        return 'Tissue & Organ Healing - This frequency supports overall relaxation and helps restore balance.';
+      case '396 Hz':
+        return 'Liberating Guilt & Fear - This frequency helps release deep-seated anxiety and promotes emotional balance.';
+      case '417 Hz':
+        return 'Undoing Situations & Facilitating Change - This frequency helps release limiting patterns and beliefs.';
+      case '432 Hz':
+        return 'Universal Healing - This frequency promotes mental clarity and helps restore harmony.';
+      case '528 Hz':
+        return 'DNA Repair & Miracles - This frequency amplifies positive emotions and supports overall well-being.';
+      case '741 Hz':
+        return 'Awakening Intuition - This frequency helps develop intuition and spiritual awareness.';
+      case '852 Hz':
+        return 'Returning to Spiritual Order - This frequency helps restore spiritual balance and order.';
+      case '963 Hz':
+        return 'Divine Consciousness - This frequency connects to divine consciousness and spiritual awakening.';
+      default:
+        return 'Universal Healing - This balanced frequency provides gentle support for overall emotional harmony.';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              child: const Text(
+                'AI Music Therapy',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () => context.go('/'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat),
+              title: const Text('Check In'),
+              onTap: () => context.go('/checkin'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.face),
+              title: const Text('Emotion Detection'),
+              onTap: () => context.go('/emotion'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('Frequency Player'),
+              onTap: () => context.go('/frequency'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.games),
+              title: const Text('Games'),
+              onTap: () => context.go('/game'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Progress'),
+              onTap: () => context.go('/progress'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () => context.go('/settings'),
+            ),
+          ],
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -121,6 +206,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => context.go('/settings'),
+                      icon: Icon(
+                        Icons.settings,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -316,6 +408,48 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               ],
                             ),
                           ),
+                          if (_followUpQuestion.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.question_answer,
+                                        color: Theme.of(context).colorScheme.secondary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'A gentle question to explore deeper:',
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context).colorScheme.secondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _followUpQuestion,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

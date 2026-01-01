@@ -29,20 +29,32 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeAudio();
+    _initializeEmotionDetection();
     _startEmotionMonitoring();
     _initializeAudioMonitoring();
   }
 
-  Future<void> _initializeAudio() async {
-    final emotion = ref.read(emotionProvider);
-    await _playBasedOnEmotion(emotion);
+  Future<void> _initializeEmotionDetection() async {
+    final emotionService = ref.read(emotionDetectionServiceProvider);
+    await emotionService.initialize();
+    emotionService.onEmotionChanged = _onEmotionChanged;
+    emotionService.startDetection();
+
+    final initialEmotion = ref.read(stableEmotionProvider);
+    await _playBasedOnEmotion(initialEmotion);
+  }
+
+  void _onEmotionChanged(String emotion) {
+    if (mounted) {
+      _playBasedOnEmotion(emotion);
+      setState(() {});
+    }
   }
 
   void _startEmotionMonitoring() {
-    emotionCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final newEmotion = ref.read(emotionProvider);
-      if (newEmotion != currentEmotion) {
+    emotionCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      final newEmotion = ref.read(stableEmotionProvider);
+      if (newEmotion != currentEmotion && newEmotion.isNotEmpty) {
         currentEmotion = newEmotion;
         _playBasedOnEmotion(newEmotion);
         setState(() {});
@@ -156,33 +168,71 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   }
 
   Future<void> _playBasedOnEmotion(String emotion) async {
-    final url = _getUrl(emotion);
+    final frequency = _getFrequencyValue(emotion);
     currentFrequency = _getFrequency(emotion);
     description = _getDescription(emotion);
 
     try {
-      await player.setUrl(url);
-      await player.play();
+      // Use Web Audio API to generate frequency
+      js.context.callMethod('eval', ['''
+        if (window.currentOscillator) {
+          window.currentOscillator.stop();
+        }
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime($frequency, audioContext.currentTime);
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Low volume for comfort
+
+        oscillator.start();
+        window.currentOscillator = oscillator;
+        window.currentGainNode = gainNode;
+        window.currentAudioContext = audioContext;
+      ''']);
+
       setState(() {
         isPlaying = true;
       });
     } catch (e) {
-      print('Audio playback error: $e');
+      print('Audio generation error: $e');
     }
   }
 
-  String _getUrl(String emotion) {
+  void _stopAudio() {
+    js.context.callMethod('eval', ['''
+      if (window.currentOscillator) {
+        window.currentOscillator.stop();
+        window.currentOscillator = null;
+      }
+    ''']);
+    setState(() {
+      isPlaying = false;
+    });
+  }
+
+  double _getFrequencyValue(String emotion) {
     const map = {
-      'happy': 'https://www.dropbox.com/scl/fi/.../528hz.mp3?rlkey=...&st=...', // 528 Hz - DNA Repair
-      'sad': 'https://www.dropbox.com/scl/fi/.../396hz.mp3?rlkey=...&st=...', // 396 Hz - Liberating Guilt
-      'angry': 'https://www.dropbox.com/scl/fi/.../174hz.mp3?rlkey=...&st=...', // 174 Hz - Pain Relief
-      'anxious': 'https://www.dropbox.com/scl/fi/.../396hz.mp3?rlkey=...&st=...', // 396 Hz - Liberating Guilt
-      'neutral': 'https://www.dropbox.com/scl/fi/.../432hz.mp3?rlkey=...&st=...', // 432 Hz - Universal
-      'surprised': 'https://www.dropbox.com/scl/fi/.../528hz.mp3?rlkey=...&st=...', // 528 Hz - Transformation
-      'disgusted': 'https://www.dropbox.com/scl/fi/.../285hz.mp3?rlkey=...&st=...', // 285 Hz - Tissue Healing
-      'fearful': 'https://www.dropbox.com/scl/fi/.../174hz.mp3?rlkey=...&st=...', // 174 Hz - Grounding
+      'happy': 528.0,
+      'sad': 396.0,
+      'angry': 174.0,
+      'anxious': 396.0,
+      'neutral': 432.0,
+      'surprised': 528.0,
+      'disgusted': 285.0,
+      'fearful': 174.0,
+      'stressed': 285.0,
+      'confused': 432.0,
+      'lonely': 528.0,
+      'grateful': 528.0,
     };
-    return map[emotion] ?? map['neutral']!;
+    return map[emotion] ?? 432.0;
   }
 
   String _getFrequency(String emotion) {
@@ -215,19 +265,20 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
 
   void _togglePlayback() {
     if (isPlaying) {
-      player.pause();
+      _stopAudio();
     } else {
-      player.play();
+      // Resume with current emotion
+      _playBasedOnEmotion(currentEmotion);
     }
-    setState(() {
-      isPlaying = !isPlaying;
-    });
   }
 
   @override
   void dispose() {
     emotionCheckTimer?.cancel();
     audioMonitoringTimer?.cancel();
+
+    // Stop Web Audio API oscillator
+    _stopAudio();
 
     // Stop JavaScript audio monitoring
     if (audioMonitoringActive) {
@@ -244,6 +295,60 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       appBar: AppBar(
         title: const Text('Adaptive Frequency Session'),
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              child: const Text(
+                'AI Music Therapy',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () => context.go('/'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat),
+              title: const Text('Check In'),
+              onTap: () => context.go('/checkin'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.face),
+              title: const Text('Emotion Detection'),
+              onTap: () => context.go('/emotion'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('Frequency Player'),
+              onTap: () => context.go('/frequency'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.games),
+              title: const Text('Games'),
+              onTap: () => context.go('/game'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Progress'),
+              onTap: () => context.go('/progress'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () => context.go('/settings'),
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -282,12 +387,7 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
                         IconButton(
                           icon: const Icon(Icons.stop),
                           iconSize: 48,
-                          onPressed: () {
-                            player.stop();
-                            setState(() {
-                              isPlaying = false;
-                            });
-                          },
+                          onPressed: _stopAudio,
                         ),
                       ],
                     ),

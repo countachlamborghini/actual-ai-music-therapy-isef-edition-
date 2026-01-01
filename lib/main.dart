@@ -9,13 +9,28 @@ import 'screens/emotion_detection_screen.dart';
 import 'screens/frequency_player_screen.dart';
 import 'screens/game_screen.dart';
 import 'screens/progress_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
+
+  @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize emotion detection service
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(emotionDetectionServiceProvider).initialize();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +42,7 @@ class MyApp extends StatelessWidget {
         GoRoute(path: '/frequency', builder: (context, state) => const FrequencyPlayerScreen()),
         GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
         GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
+        GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       ],
     );
 
@@ -35,7 +51,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4A90E2), // Professional blue
+          seedColor: const Color(0xFF0F172A), // Very dark blue
           brightness: Brightness.light,
         ),
         cardTheme: CardTheme(

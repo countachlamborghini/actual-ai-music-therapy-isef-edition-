@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -19,7 +20,7 @@ class ProgressScreen extends StatelessWidget {
             Text('Total XP: $xp'),
             Text('Current Streak: $streak'),
             const Text('Unlocked: Basic Session'),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/checkin'), child: const Text('Start New Session')),
+            ElevatedButton(onPressed: () => context.go('/checkin'), child: const Text('Start New Session')),
           ],
         ),
       ),
