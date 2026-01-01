@@ -24,7 +24,7 @@ const RESOURCES = {"assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8
 "index.html": "ab4196e31eb000e0a2ecb805a3d4620c",
 "/": "ab4196e31eb000e0a2ecb805a3d4620c",
 "main.dart.js": "8b86fa8082938442310195e77ce002b7",
-"flutter_bootstrap.js": "300ada8af3217ebdf91ccd3369dad7db",
+"flutter_bootstrap.js": "3d9e1f36db86a7499131c02294c25923",
 "version.json": "16807ce29f4ca0bdbeb2781ca12e4f0c",
 "flutter.js": "f31737fb005cd3a3c6bd9355efd33061"};
 // The application shell files that are downloaded before a service worker can
