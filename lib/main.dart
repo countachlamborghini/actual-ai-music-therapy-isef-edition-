@@ -23,15 +23,15 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const OnboardingScreen(),
-        '/checkin': (context) => const CheckInScreen(),
-        '/emotion': (context) => const EmotionDetectionScreen(),
-        '/frequency': (context) => const FrequencyPlayerScreen(),
-        '/game': (context) => const GameScreen(),
-        '/progress': (context) => const ProgressScreen(),
-      },
+      home: Scaffold(
+        appBar: AppBar(title: const Text('AI Music Therapy')),
+        body: const Center(
+          child: Text(
+            'ISEF AI Music Therapy MVP - Working!',
+            style: TextStyle(fontSize: 24),
+          ),
+        ),
+      ),
     );
   }
 }
