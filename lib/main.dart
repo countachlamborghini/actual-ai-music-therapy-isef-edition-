@@ -1,39 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'screens/onboarding_screen.dart';
+import 'screens/check_in_screen.dart';
+import 'screens/emotion_detection_screen.dart';
+import 'screens/frequency_player_screen.dart';
+import 'screens/game_screen.dart';
+import 'screens/progress_screen.dart';
 
 void main() {
-  runApp(const AIMusicTherapyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class AIMusicTherapyApp extends StatelessWidget {
-  const AIMusicTherapyApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'AI Music Therapy',
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: Text(
-          'AI Music Therapy – ISEF Edition',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const OnboardingScreen(),
+        '/checkin': (context) => const CheckInScreen(),
+        '/emotion': (context) => const EmotionDetectionScreen(),
+        '/frequency': (context) => const FrequencyPlayerScreen(),
+        '/game': (context) => const GameScreen(),
+        '/progress': (context) => const ProgressScreen(),
+      },
     );
   }
 }
