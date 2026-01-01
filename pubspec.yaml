@@ -1,0 +1,29 @@
+name: ai_music_therapy
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.5.1
+  camera: ^0.10.5+9
+  just_audio: ^0.9.39
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  js: ^0.6.7
+  fl_chart: ^0.67.0
+  pdf: ^3.10.7
+  path_provider: ^2.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
