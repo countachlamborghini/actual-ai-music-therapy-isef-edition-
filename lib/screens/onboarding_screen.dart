@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers.dart';
+import '../widgets/top_nav_bar.dart';
 
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
@@ -29,6 +30,7 @@ class _OnboardingContentState extends State<OnboardingContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const TopNavBar(title: 'AI Music Therapy'),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

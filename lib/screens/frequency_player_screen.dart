@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import '../providers.dart';
+import '../widgets/top_nav_bar.dart';
+import '../widgets/therapist_chat.dart';
 
 class FrequencyPlayerScreen extends ConsumerStatefulWidget {
   const FrequencyPlayerScreen({super.key});
@@ -32,6 +34,15 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
     _initializeEmotionDetection();
     _startEmotionMonitoring();
     _initializeAudioMonitoring();
+
+    // Listen for AI-suggested frequency changes from the therapist
+    ref.listen<double?>(aiSuggestedFrequencyProvider, (previous, next) {
+      if (next != null) {
+        _applySuggestedFrequency(next);
+        // clear suggestion after applying
+        ref.read(aiSuggestedFrequencyProvider.notifier).state = null;
+      }
+    });
   }
 
   Future<void> _initializeEmotionDetection() async {
@@ -272,6 +283,42 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
     }
   }
 
+  void _applySuggestedFrequency(double frequency) {
+    try {
+      js.context.callMethod('eval', ["""
+        if (window.currentOscillator && window.currentAudioContext) {
+          window.currentOscillator.frequency.setValueAtTime($frequency, window.currentAudioContext.currentTime);
+        }
+      """]);
+
+      // Update labels
+      currentFrequency = '${frequency.toStringAsFixed(0)} Hz';
+      description = _getDescriptionForFrequency(frequency);
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Therapist suggested frequency applied: ${currentFrequency}')),
+      );
+    } catch (e) {
+      print('Failed to apply suggested frequency: $e');
+    }
+  }
+
+  String _getDescriptionForFrequency(double frequency) {
+    final map = {
+      174.0: 'Pain Relief & Grounding',
+      285.0: 'Tissue & Organ Healing',
+      396.0: 'Liberating Guilt & Fear',
+      417.0: 'Undoing Situations & Facilitating Change',
+      432.0: 'Universal Healing',
+      528.0: 'DNA Repair & Miracles',
+      741.0: 'Awakening Intuition',
+      852.0: 'Returning to Spiritual Order',
+      963.0: 'Divine Consciousness',
+    };
+    return map[frequency] ?? 'Suggested Frequency';
+  }
+
   @override
   void dispose() {
     emotionCheckTimer?.cancel();
@@ -292,10 +339,17 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Adaptive Frequency Session'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      appBar: TopNavBar(
+        title: 'Adaptive Frequency Session',
+        extraActions: [
+          IconButton(
+            icon: const Icon(Icons.chat, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openEndDrawer(),
+            tooltip: 'Open Therapist Chat',
+          ),
+        ],
       ),
+      endDrawer: const TherapistChat(),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -404,6 +458,39 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
                     const Text(
                       'Session Monitoring',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Icon(
+                              Icons.videocam,
+                              color: ref.read(emotionDetectionServiceProvider).isInitialized ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(ref.read(emotionDetectionServiceProvider).isInitialized ? 'Camera active' : 'Camera inactive'),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Icon(
+                              Icons.mic,
+                              color: audioMonitoringActive ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(audioMonitoringActive ? 'Mic active' : 'Mic inactive'),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Icon(Icons.auto_fix_high, color: Colors.blue),
+                            const SizedBox(height: 4),
+                            const Text('Auto frequency adjustment'),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     const Text(

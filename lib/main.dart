@@ -10,6 +10,8 @@ import 'screens/frequency_player_screen.dart';
 import 'screens/game_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/therapist_screen.dart';
+import 'widgets/top_nav_bar.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -42,6 +44,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         GoRoute(path: '/frequency', builder: (context, state) => const FrequencyPlayerScreen()),
         GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
         GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
+        GoRoute(path: '/therapist', builder: (context, state) => const TherapistScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       ],
     );

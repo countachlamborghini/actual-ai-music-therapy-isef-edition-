@@ -248,3 +248,6 @@ Respond empathetically and suggest appropriate frequencies. Keep responses conve
 final deepSeekTherapistProvider = Provider<DeepSeekTherapistService>((ref) {
   return DeepSeekTherapistService();
 });
+
+// Provider for AI-suggested frequency (Hz) set by therapist suggestions
+final aiSuggestedFrequencyProvider = StateProvider<double?>((ref) => null);

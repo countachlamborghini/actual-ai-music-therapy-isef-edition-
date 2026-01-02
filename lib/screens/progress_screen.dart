@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/top_nav_bar.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -11,7 +12,7 @@ class ProgressScreen extends StatelessWidget {
     const xp = 10;
     const streak = 1;
     return Scaffold(
-      appBar: AppBar(title: const Text('Progress')),
+      appBar: const TopNavBar(title: 'Progress'),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

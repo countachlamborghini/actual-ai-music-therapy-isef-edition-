@@ -8,6 +8,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers.dart';
+import '../widgets/top_nav_bar.dart';
 
 class EmotionDetectionScreen extends ConsumerStatefulWidget {
   const EmotionDetectionScreen({super.key});
@@ -159,10 +160,7 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Emotion Detection'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      ),
+      appBar: const TopNavBar(title: 'Emotion Detection'),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
