@@ -19,6 +19,25 @@
   <div id="deployed-version" style="position:fixed;top:10px;left:10px;padding:6px 10px;background:#0b74de;color:white;border-radius:6px;font-weight:600;z-index:9999">Build: 202601021740</div>
   <video id="emotion-video" autoplay muted playsinline style="display: none;"></video>
   <script>console.log('DEPLOY BUILD: 202601021740');</script>
-  <script src="main.dart.js" type="application/javascript"></script>
+  <script>
+    window.addEventListener('error', function (e) {
+      console.error('Runtime error captured:', e.message || e);
+      const banner = document.getElementById('deployed-version');
+      if (banner) banner.innerText = 'Build: 202601021740 — ERROR: ' + (e.message || 'see console');
+      const detail = document.getElementById('deploy-error-detail');
+      if (detail) detail.textContent = 'Runtime error: ' + (e.message || e);
+      document.body.style.backgroundColor = '#fff8f8';
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      console.error('Unhandled rejection:', e.reason || e);
+      const banner = document.getElementById('deployed-version');
+      if (banner) banner.innerText = 'Build: 202601021740 — UNHANDLED REJECTION';
+      const detail = document.getElementById('deploy-error-detail');
+      if (detail) detail.textContent = 'Unhandled rejection: ' + (e.reason && (e.reason.message || e.reason) || e);
+      document.body.style.backgroundColor = '#fff8f8';
+    });
+  </script>
+  <script src="main.dart.js" type="application/javascript" onload="console.log('main.dart.js loaded')" onerror="console.error('main.dart.js failed to load')"></script>
+  <div id="deploy-error-detail" style="position:fixed;bottom:10px;left:10px;right:10px;padding:10px;background:#fff1f1;border-left:4px solid #ff4d4f;color:#222;display:block;z-index:9998"></div>
 </body>
 </html>
