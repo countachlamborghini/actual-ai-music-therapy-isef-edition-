@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Deployment Debug</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>body{font-family:system-ui,Arial;margin:16px} pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow:auto}</style>
+</head>
+<body>
+  <h1>Deployment Debug Page</h1>
+  <p>This page helps diagnose whether <code>main.dart.js</code> is loading and what its content is.</p>
+
+  <div id="status">Checking...</div>
+
+  <button id="unreg">Unregister service workers</button>
+  <button id="fetch">Fetch <code>main.dart.js</code> info</button>
+
+  <h3>Console Output</h3>
+  <pre id="out"></pre>
+
+  <script>
+    const out = (s) => { const el = document.getElementById('out'); el.textContent += s + '\n'; console.log(s); };
+
+    out('Page loaded.');
+
+    // Check if main.dart.js is loaded as a script
+    const scripts = Array.from(document.scripts).map(s => s.src).filter(Boolean);
+    out('Scripts in page: ' + scripts.join(', '));
+
+    // Try to find and load main.dart.js
+    async function fetchMain() {
+      try {
+        const resp = await fetch('main.dart.js', {cache: 'no-store'});
+        out('main.dart.js status: ' + resp.status + ' ' + resp.statusText);
+        const txt = await resp.text();
+        out('main.dart.js length: ' + txt.length + ' chars');
+        out('main.dart.js first 500 chars:\n' + txt.slice(0,500));
+        const hasWelcome = txt.includes('Welcome back') || txt.includes('AI Music Therapy');
+        out('Contains known UI strings: ' + hasWelcome);
+      } catch (e) {
+        out('Failed fetching main.dart.js: ' + e);
+      }
+    }
+
+    document.getElementById('fetch').addEventListener('click', fetchMain);
+
+    document.getElementById('unreg').addEventListener('click', async () => {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        out('Found ' + regs.length + ' registrations');
+        for (const r of regs) { await r.unregister(); out('Unregistered: ' + r.scope); }
+      } else {
+        out('No serviceWorker support');
+      }
+    });
+
+    // immediate check
+    fetchMain();
+
+  </script>
+</body>
+</html>
