@@ -15,7 +15,10 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Deployment build banner: visible if this exact HTML is loaded -->
+  <div id="deployed-version" style="position:fixed;top:10px;left:10px;padding:6px 10px;background:#0b74de;color:white;border-radius:6px;font-weight:600;z-index:9999">Build: 202601021740</div>
   <video id="emotion-video" autoplay muted playsinline style="display: none;"></video>
+  <script>console.log('DEPLOY BUILD: 202601021740');</script>
   <script src="main.dart.js" type="application/javascript"></script>
 </body>
 </html>
