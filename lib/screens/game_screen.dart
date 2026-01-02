@@ -2,41 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/top_nav_bar.dart';
 
-class GameScreen extends StatefulWidget {
+// Repurposed: Game screen removed in favor of rewards/Xp system. Redirect users to Rewards screen.
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class GameScreen extends StatelessWidget {
   const GameScreen({super.key});
-
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
-
-class _GameScreenState extends State<GameScreen> {
-  int level = 1;
-  int xp = 0;
-  int streak = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    xp += 10;
-    streak++;
-    if (xp >= level * 100) {
-      level++;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const TopNavBar(title: 'Game Session'),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Level: $level', style: const TextStyle(fontSize: 20)),
-            Text('XP: $xp', style: const TextStyle(fontSize: 20)),
-            Text('Streak: $streak', style: const TextStyle(fontSize: 20)),
-            const Text('Session completed!'),
-            ElevatedButton(onPressed: () => context.go('/progress'), child: const Text('View Progress')),
+            const Text('Games have been replaced by a Rewards system.'),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: () => context.go('/rewards'), child: const Text('Go to Rewards')),
           ],
         ),
       ),

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'providers.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/rewards_screen.dart';
 import 'screens/check_in_screen.dart';
 import 'screens/emotion_detection_screen.dart';
 import 'screens/frequency_player_screen.dart';
@@ -38,11 +40,13 @@ class _MyAppState extends ConsumerState<MyApp> {
   Widget build(BuildContext context) {
     final router = GoRouter(
       routes: [
-        GoRoute(path: '/', builder: (context, state) => const OnboardingScreen()),
+        // Use the Home dashboard as the main route
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
         GoRoute(path: '/checkin', builder: (context, state) => const CheckInScreen()),
         GoRoute(path: '/emotion', builder: (context, state) => const EmotionDetectionScreen()),
         GoRoute(path: '/frequency', builder: (context, state) => const FrequencyPlayerScreen()),
-        GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
+        GoRoute(path: '/rewards', builder: (context, state) => const RewardsScreen()),
         GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
         GoRoute(path: '/therapist', builder: (context, state) => const TherapistScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),

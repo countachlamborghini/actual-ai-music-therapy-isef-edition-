@@ -40,12 +40,31 @@ class EmotionDetectionService {
   }
 
   Future<void> _loadFaceApiModels() async {
-    // Load Face API models
+    // Load Face API models with CDN fallback and include landmarks for richer heuristics
     js.context.callMethod('eval', ['''
       async function loadModels() {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/');
-        await faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/');
-        console.log('Face API models loaded');
+        const bases = [
+          'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/',
+          'https://justadudewhohacks.github.io/face-api.js/models/',
+          'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/'
+        ];
+
+        for (const base of bases) {
+          try {
+            await faceapi.nets.tinyFaceDetector.loadFromUri(base);
+            await faceapi.nets.faceExpressionNet.loadFromUri(base);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(base);
+            console.log('Face API models loaded from', base);
+            window.faceApiModelsBase = base;
+            window.faceApiModelsLoaded = true;
+            return;
+          } catch (e) {
+            console.warn('Failed to load face-api models from', base, e);
+          }
+        }
+
+        console.error('Failed to load Face API models from all known URLs. Please host weights in your assets and load from there or verify network/CORS settings.');
+        window.faceApiModelsLoaded = false;
       }
       loadModels();
     ''']);
@@ -70,7 +89,7 @@ class EmotionDetectionService {
     if (!isDetecting) return;
 
     try {
-      // Use JavaScript to access the camera video element and detect emotions
+      // Use JavaScript to access the camera video element and detect emotions with landmarks and heuristics
       final result = js.context.callMethod('eval', ['''
         (async function() {
           try {
@@ -86,19 +105,80 @@ class EmotionDetectionService {
 
             if (!video || video.readyState < 2) return 'neutral';
 
-            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
             if (detections && detections.expressions) {
               const expressions = detections.expressions;
-              let maxEmotion = 'neutral';
-              let maxValue = 0;
 
-              for (const [emotion, value] of Object.entries(expressions)) {
-                if (value > maxValue && value > 0.3) { // Minimum confidence threshold
-                  maxValue = value;
-                  maxEmotion = emotion;
+              // Landmarks-based features (if available)
+              const lm = detections.landmarks;
+              let mouthOpen = 0;
+              let eyeOpen = 0;
+              if (lm) {
+                try {
+                  const mouth = lm.getMouth();
+                  const leftEye = lm.getLeftEye();
+                  const rightEye = lm.getRightEye();
+                  function dist(a,b){const dx=a.x-b.x;const dy=a.y-b.y;return Math.hypot(dx,dy);} 
+                  // approximate vertical mouth opening
+                  mouthOpen = dist(mouth[14], mouth[18]);
+                  const eyeOpenL = dist(leftEye[1], leftEye[5]);
+                  const eyeOpenR = dist(rightEye[1], rightEye[5]);
+                  eyeOpen = (eyeOpenL + eyeOpenR) / 2;
+                } catch (e) {
+                  // ignore landmark errors
                 }
               }
-              return maxEmotion;
+
+              // Audio signal features (if analyser present)
+              let audioAvg = 0;
+              if (window.analyser) {
+                try {
+                  const bufferLength = window.analyser.frequencyBinCount;
+                  const dataArray = new Uint8Array(bufferLength);
+                  window.analyser.getByteFrequencyData(dataArray);
+                  let sum = 0;
+                  for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+                  audioAvg = sum / bufferLength;
+                } catch (e) {
+                  // ignore audio errors
+                }
+              }
+
+              // Determine primary expression and attempt derived emotion heuristics
+              let maxEmotion = 'neutral';
+              let maxValue = 0;
+              for (const [emotion, value] of Object.entries(expressions)) {
+                if (value > maxValue) { maxValue = value; maxEmotion = emotion; }
+              }
+
+              // Heuristic-derived emotions (additional to face-api's base set)
+              // Order matters: check more specific states first
+              if ((expressions.fear && expressions.fear > 0.35) || (expressions.sad && expressions.sad > 0.35 && expressions.fear > 0.2)) {
+                return 'anxious';
+              } else if ((expressions.angry && expressions.angry > 0.3) && (expressions.fear && expressions.fear > 0.2)) {
+                return 'stressed';
+              } else if ((expressions.surprised && expressions.surprised > 0.25) && (expressions.sad && expressions.sad > 0.15)) {
+                return 'confused';
+              } else if (eyeOpen < 2.5 && mouthOpen < 2.5) {
+                return 'tired';
+              } else if (maxValue < 0.2 && audioAvg < 20) {
+                return 'bored';
+              } else if (expressions.happy && expressions.happy > 0.45 && audioAvg > 40) {
+                return 'excited';
+              } else if (expressions.happy && expressions.happy > 0.25 && (expressions.surprised && expressions.surprised < 0.2)) {
+                return 'grateful';
+              } else if (expressions.sad && expressions.sad > 0.5 && expressions.happy < 0.1) {
+                return 'lonely';
+              } else if (maxEmotion === 'neutral' && audioAvg < 25 && eyeOpen > 2.5) {
+                return 'calm';
+              } else if ((maxEmotion === 'neutral' || maxEmotion === 'surprised') && mouthOpen > 3 && audioAvg > 35) {
+                return 'contemplative';
+              }
+
+              // Fallback to base emotion detection if no derived state matched
+              // Apply a minimal confidence threshold to avoid noisy small values
+              if (maxValue > 0.3) return maxEmotion;
+              return 'neutral';
             }
             return 'neutral';
           } catch (e) {
@@ -249,5 +329,120 @@ final deepSeekTherapistProvider = Provider<DeepSeekTherapistService>((ref) {
   return DeepSeekTherapistService();
 });
 
+// Companion therapist (alternative persona) reusing DeepSeek calling code with a different system prompt
+class CompanionTherapistService extends DeepSeekTherapistService {
+  @override
+  Future<String> getTherapeuticResponse(String userMessage, String currentEmotion) async {
+    // Slightly different system prompt for a companion-style response
+    conversationHistory.add({'role': 'user', 'content': userMessage});
+
+    String systemPrompt = '''
+You are a warm, friendly companion who listens empathetically and offers gentle, practical support. Encourage small steps, validate feelings, and suggest simple music-based exercises and frequencies that can help in the moment.
+Current user emotion: $currentEmotion
+Respond with short, conversational guidance and, if appropriate, suggest a solfeggio frequency (e.g., "Try 432 Hz").
+''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: jsonEncode({
+          'model': 'deepseek-chat',
+          'messages': [
+            {'role': 'system', 'content': systemPrompt},
+            ...conversationHistory.map((msg) => {
+              'role': msg['role'],
+              'content': msg['content']
+            }).toList(),
+          ],
+          'max_tokens': 400,
+          'temperature': 0.8,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final aiResponse = data['choices'][0]['content'];
+        conversationHistory.add({'role': 'assistant', 'content': aiResponse});
+        return aiResponse;
+      } else {
+        return _getFallbackResponse(userMessage, currentEmotion);
+      }
+    } catch (e) {
+      print('Companion API error: $e');
+      return _getFallbackResponse(userMessage, currentEmotion);
+    }
+  }
+}
+
+// Companion provider
+final companionTherapistProvider = Provider<CompanionTherapistService>((ref) {
+  return CompanionTherapistService();
+});
+
 // Provider for AI-suggested frequency (Hz) set by therapist suggestions
 final aiSuggestedFrequencyProvider = StateProvider<double?>((ref) => null);
+
+// XP and rewards system
+class XP {
+  final int total;
+  final int level;
+  final String tierName;
+
+  XP({required this.total, required this.level, required this.tierName});
+}
+
+class XPNotifier extends StateNotifier<XP> {
+  XPNotifier(): super(XP(total: 0, level: 1, tierName: 'Beginner'));
+
+  void addXp(int amount, WidgetRef? ref) {
+    final newTotal = state.total + amount;
+    final newLevel = (newTotal ~/ 100) + 1; // every 100 XP is a level
+    final tier = _tierForXp(newTotal);
+    state = XP(total: newTotal, level: newLevel, tierName: tier);
+
+    // Check for rewards unlock
+    if (ref != null) {
+      final rewardService = ref.read(_rewardsServiceProvider);
+      rewardService.checkUnlocks(newTotal);
+    }
+  }
+
+  String _tierForXp(int xp) {
+    if (xp >= 1000) return 'Master';
+    if (xp >= 500) return 'Advanced';
+    if (xp >= 200) return 'Intermediate';
+    return 'Beginner';
+  }
+}
+
+final xpProvider = StateNotifierProvider<XPNotifier, XP>((ref) {
+  return XPNotifier();
+});
+
+// Simple rewards service using provider state
+class RewardsService {
+  final List<Map<String, String>> _unlocked = [];
+
+  List<Map<String, String>> get unlocked => List.unmodifiable(_unlocked);
+
+  void checkUnlocks(int xp) {
+    // Example thresholds
+    if (xp >= 50 && !_has('Calm Theme')) _unlock({'title':'Calm Theme','description':'Unlock a calming theme for your sessions'});
+    if (xp >= 150 && !_has('Focus Theme')) _unlock({'title':'Focus Theme','description':'Unlock a focus theme for reflective sessions'});
+    if (xp >= 300 && !_has('Guided Session')) _unlock({'title':'Guided Session','description':'Unlock a premium guided mini-session'});
+    if (xp >= 600 && !_has('Exclusive Sound Pack')) _unlock({'title':'Exclusive Sound Pack','description':'Unlock an extra set of therapeutic tones'});
+    if (xp >= 1200 && !_has('Achievement Badge')) _unlock({'title':'Achievement Badge','description':'Earn the Master badge'});
+  }
+
+  bool _has(String title) => _unlocked.any((r) => r['title'] == title);
+  void _unlock(Map<String, String> reward) {
+    _unlocked.add(reward);
+  }
+}
+
+final _rewardsServiceProvider = Provider<RewardsService>((ref) => RewardsService());
+final unlockedRewardsProvider = Provider<List<Map<String, String>>>((ref) => ref.read(_rewardsServiceProvider).unlocked);

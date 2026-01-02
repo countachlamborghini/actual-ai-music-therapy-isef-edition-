@@ -9,6 +9,8 @@ class TherapistChat extends ConsumerStatefulWidget {
   ConsumerState<TherapistChat> createState() => _TherapistChatState();
 }
 
+final _useCompanionProvider = StateProvider<bool>((ref) => false);
+
 class _TherapistChatState extends ConsumerState<TherapistChat> {
   final _controller = TextEditingController();
   final List<Map<String, String>> messages = [];
@@ -28,9 +30,13 @@ class _TherapistChatState extends ConsumerState<TherapistChat> {
     _controller.clear();
 
     setState(() => _sending = true);
-    final deepSeek = ref.read(deepSeekTherapistProvider);
+    // Allow choosing which therapist to call: main deepSeek or companion
     final currentEmotion = ref.read(stableEmotionProvider);
-    final response = await deepSeek.getTherapeuticResponse(text, currentEmotion);
+    final useCompanion = ref.read(_useCompanionProvider);
+
+    final therapist = useCompanion ? ref.read(companionTherapistProvider) : ref.read(deepSeekTherapistProvider);
+
+    final response = await therapist.getTherapeuticResponse(text, currentEmotion);
     _addMessage('assistant', response);
 
     // Look for frequency suggestion like '432 Hz' or a number + 'Hz'
@@ -54,6 +60,18 @@ class _TherapistChatState extends ConsumerState<TherapistChat> {
             ListTile(
               leading: const Icon(Icons.psychology),
               title: const Text('Therapist Chat'),
+              subtitle: Row(
+                children: [
+                  const Text('Use companion: '),
+                  Consumer(builder: (context, ref, _) {
+                    final useComp = ref.watch(_useCompanionProvider);
+                    return Switch(
+                      value: useComp,
+                      onChanged: (v) => ref.read(_useCompanionProvider.notifier).state = v,
+                    );
+                  }),
+                ],
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.clear),
                 onPressed: () => Navigator.of(context).pop(),

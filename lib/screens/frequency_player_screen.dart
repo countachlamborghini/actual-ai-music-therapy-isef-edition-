@@ -25,6 +25,9 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   Timer? emotionCheckTimer;
   Timer? audioMonitoringTimer;
 
+  // XP tracking
+  DateTime? sessionStart;
+
   // Audio monitoring using JavaScript
   bool audioMonitoringActive = false;
 
@@ -148,6 +151,9 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       js.context['handleAbnormalNoiseCallback'] = js.allowInterop(() {
         _handleAbnormalNoise();
       });
+
+      // Track session start for XP awarding
+      sessionStart = DateTime.now();
     } catch (e) {
       print('Audio monitoring initialization failed: $e');
     }
@@ -226,6 +232,22 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
     setState(() {
       isPlaying = false;
     });
+
+    // Award XP based on session duration
+    if (sessionStart != null) {
+      final duration = DateTime.now().difference(sessionStart!).inSeconds;
+      final xpAmount = (duration / 10).round(); // 1 XP per 10 seconds
+      try {
+        // Using ref via mounted check
+        if (mounted) {
+          ref.read(xpProvider.notifier).addXp(xpAmount, ref);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Session ended — you earned $xpAmount XP')));
+        }
+      } catch (e) {
+        print('Failed to award XP: $e');
+      }
+      sessionStart = null;
+    }
   }
 
   double _getFrequencyValue(String emotion) {
@@ -242,6 +264,11 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       'confused': 432.0,
       'lonely': 528.0,
       'grateful': 528.0,
+      'tired': 174.0,
+      'bored': 432.0,
+      'excited': 528.0,
+      'calm': 432.0,
+      'contemplative': 432.0,
     };
     return map[emotion] ?? 432.0;
   }
@@ -256,6 +283,11 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       'surprised': '528 Hz',
       'disgusted': '285 Hz',
       'fearful': '174 Hz',
+      'tired': '174 Hz',
+      'bored': '432 Hz',
+      'excited': '528 Hz',
+      'calm': '432 Hz',
+      'contemplative': '432 Hz',
     };
     return map[emotion] ?? '432 Hz';
   }
@@ -270,6 +302,11 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       'surprised': 'DNA Repair & Miracles',
       'disgusted': 'Tissue & Organ Healing',
       'fearful': 'Pain Relief & Grounding',
+      'tired': 'Rest & Recovery - Gentle grounding for fatigue',
+      'bored': 'Universal Healing - Reset and gently re-center',
+      'excited': 'DNA Repair & Uplift - Amplify positive energy',
+      'calm': 'Universal Healing - Reinforce relaxation and balance',
+      'contemplative': 'Focus & Introspection - Supports reflective states',
     };
     return map[emotion] ?? 'Universal Healing';
   }
