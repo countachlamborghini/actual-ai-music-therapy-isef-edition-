@@ -48,38 +48,46 @@
       document.body.style.backgroundColor = '#fff8f8';
     });
   </script>
-  <script src="flutter.js" type="application/javascript" onload="console.log('flutter.js loaded')" onerror="console.error('flutter.js failed to load')"></script>
+  <script src="flutter.js" type="application/javascript"
+          onload="(function(){console.log('flutter.js loaded');try{const b=document.getElementById('deployed-version');if(b)b.innerText='Build: 202601021740 — flutter.js loaded';}catch(e){} })()"
+          onerror="(function(){console.error('flutter.js failed to load');try{const b=document.getElementById('deployed-version');if(b)b.innerText='Build: 202601021740 — flutter.js load FAILED';}catch(e){} })()"></script>
   <script>
     // Prefer initializing via _flutter.loader so the engine initializer is available for main.dart.js
     try {
+      const status = (s) => { try{ const b=document.getElementById('deployed-version'); if(b) b.innerText = 'Build: 202601021740 — ' + s; const d=document.getElementById('deploy-error-detail'); if(d) d.textContent = s; } catch(e){} };
       if (window._flutter && window._flutter.loader) {
         console.log('Using _flutter.loader to load entrypoint (will create main.dart.js tag via loader).');
+        status('starting loader');
         // Use loader API which will create the script tag and provide engine initializer
         window._flutter.loader.loadEntrypoint({ onEntrypointLoaded: function(engineInitializer) {
           console.log('Engine initializer delivered by loader:', !!engineInitializer);
+          status('engine initializer delivered');
           try {
             if (engineInitializer && engineInitializer.initializeEngine) {
               engineInitializer.initializeEngine().then(function(instance) {
                 console.log('Engine initialized (via loader):', instance && !!instance.runApp);
+                status('engine initialized');
                 if (instance && instance.runApp) {
-                  instance.runApp();
-                  console.log('runApp called successfully');
+                  try { instance.runApp(); console.log('runApp called successfully'); status('runApp called'); } catch(e) { console.error('runApp threw:', e); status('runApp threw error'); }
                 }
-              }).catch(function(e) { console.error('Engine initialization failed:', e); });
+              }).catch(function(e) { console.error('Engine initialization failed:', e); status('engine init failed: ' + (e && e.message || e)); });
             } else {
               console.warn('Loader delivered no initializeEngine.');
+              status('loader delivered no initializeEngine');
             }
-          } catch(e){ console.error('Error while invoking engineInitializer:', e); }
+          } catch(e){ console.error('Error while invoking engineInitializer:', e); status('invoke engineInitializer error: ' + (e && e.message || e)); }
         }});
       } else {
         console.warn('_flutter.loader not available; falling back to adding main.dart.js directly');
+        status('_flutter.loader not available — app may not initialize; loading main.dart.js fallback');
         var s = document.createElement('script'); s.src = 'main.dart.js'; s.type = 'application/javascript';
-        s.onload = function(){ console.log('main.dart.js loaded (fallback script)'); };
-        s.onerror = function(){ console.error('main.dart.js failed to load (fallback)'); };
+        s.onload = function(){ console.log('main.dart.js loaded (fallback script)'); status('main.dart.js loaded (fallback)'); };
+        s.onerror = function(){ console.error('main.dart.js failed to load (fallback)'); status('main.dart.js load FAILED (fallback)'); };
         document.head.appendChild(s);
       }
     } catch(e) {
       console.error('Exception in loader bootstrap script:', e);
+      try{const d=document.getElementById('deploy-error-detail'); if(d) d.textContent = 'bootstrap exception: ' + (e && e.message || e);}catch(e){}
       // Fallback: append main.dart.js directly
       var s2 = document.createElement('script'); s2.src = 'main.dart.js'; s2.type = 'application/javascript';
       s2.onload = function(){ console.log('main.dart.js loaded (fallback-exception)'); };
