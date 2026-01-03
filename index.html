@@ -13,6 +13,17 @@
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js" id="faceapi-script"></script>
   <link rel="icon" type="image/png" href="favicon.png"/>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Force Flutter elements to occupy full page to avoid zero-sized glass pane */
+    flutter-view, flt-glass-pane, #flutterweb-theme, [flutter-view] {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
+      z-index: 0 !important;
+    }
+  </style>
 </head>
 <body>
   <!-- Deployment build banner: visible if this exact HTML is loaded -->
@@ -53,6 +64,8 @@
           try {
             const r = el.getBoundingClientRect();
             console.log(`Flutter element[${i}] tag:${el.tagName} id:${el.id || ''} class:${el.className} rect: ${r.width}x${r.height} @ (${r.left},${r.top})`);
+            const cs = getComputedStyle(el);
+            console.log(`Flutter element[${i}] computed style: display=${cs.display} position=${cs.position} width=${cs.width} height=${cs.height} visibility=${cs.visibility}`);
             const highlight = document.createElement('div');
             highlight.style.position = 'fixed';
             highlight.style.left = `${r.left}px`;
