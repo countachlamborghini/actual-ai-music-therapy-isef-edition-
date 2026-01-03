@@ -47,6 +47,46 @@
         console.log('flutterCanvasKit present:', !!window.flutterCanvasKit);
         const views = document.querySelectorAll('flutter-view, flt-glass-pane, #flutterweb-theme, [flutter-view]');
         console.log('flutter view-like elements count:', views.length, views);
+
+        // Highlight each suspected Flutter element and report its size/style
+        views.forEach((el, i) => {
+          try {
+            const r = el.getBoundingClientRect();
+            console.log(`Flutter element[${i}] tag:${el.tagName} id:${el.id || ''} class:${el.className} rect: ${r.width}x${r.height} @ (${r.left},${r.top})`);
+            const highlight = document.createElement('div');
+            highlight.style.position = 'fixed';
+            highlight.style.left = `${r.left}px`;
+            highlight.style.top = `${r.top}px`;
+            highlight.style.width = `${Math.max(2, r.width)}px`;
+            highlight.style.height = `${Math.max(2, r.height)}px`;
+            highlight.style.border = '3px dashed rgba(0,200,100,0.9)';
+            highlight.style.zIndex = '999999';
+            highlight.style.pointerEvents = 'none';
+            highlight.title = `Flutter element ${i}`;
+            document.body.appendChild(highlight);
+
+            const info = document.createElement('div');
+            info.style.position = 'fixed';
+            info.style.left = `${Math.max(2, r.left)}px`;
+            info.style.top = `${Math.max(2, r.top - 22)}px`;
+            info.style.background = 'rgba(0,200,100,0.9)';
+            info.style.color = '#fff';
+            info.style.padding = '2px 6px';
+            info.style.fontSize = '12px';
+            info.style.zIndex = '1000000';
+            info.textContent = `${el.tagName} ${Math.round(r.width)}x${Math.round(r.height)}`;
+            document.body.appendChild(info);
+          } catch (e) {
+            console.warn('Failed to highlight element', e);
+          }
+        });
+
+        // Also look for canvas elements and report
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach((c, i) => {
+          const r = c.getBoundingClientRect();
+          console.log(`Canvas[${i}] size: ${r.width}x${r.height} display:${getComputedStyle(c).display}`);
+        });
       } catch (e) {
         console.error('Runtime diagnostic failed:', e);
       }
