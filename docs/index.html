@@ -66,10 +66,46 @@
             if (engineInitializer && engineInitializer.initializeEngine) {
               engineInitializer.initializeEngine().then(function(instance) {
                 console.log('Engine initialized (via loader):', instance && !!instance.runApp);
+                console.log('Engine instance keys:', instance ? Object.keys(instance) : '<no-instance>', instance);
                 status('engine initialized');
+
+                // If runApp exists, call it and observe for thrown errors
                 if (instance && instance.runApp) {
-                  try { instance.runApp(); console.log('runApp called successfully'); status('runApp called'); } catch(e) { console.error('runApp threw:', e); status('runApp threw error'); }
+                  try {
+                    instance.runApp();
+                    console.log('runApp called successfully');
+                    status('runApp called');
+                  } catch(e) {
+                    console.error('runApp threw:', e);
+                    status('runApp threw error: ' + (e && e.message || e));
+                  }
+                } else {
+                  console.warn('No runApp method on engine instance; will inject main.dart.js fallback.');
+                  status('no runApp — injecting main.dart.js fallback');
+                  try {
+                    var fb = document.createElement('script');
+                    fb.src = 'main.dart.js'; fb.type = 'application/javascript';
+                    fb.onload = function(){ console.log('main.dart.js loaded (injected fallback)'); status('main.dart.js loaded (fallback)'); };
+                    fb.onerror = function(e){ console.error('main.dart.js failed to load (injected fallback)', e); status('main.dart.js load FAILED (fallback)'); };
+                    document.head.appendChild(fb);
+                  } catch(e) { console.error('Failed to inject main.dart.js fallback:', e); }
                 }
+
+                // Safety timeout: if runApp hasn't been observed in 2s, log and ensure fallback
+                setTimeout(function(){
+                  const banner = document.getElementById('deployed-version');
+                  if (banner && banner.innerText.indexOf('runApp called')===-1) {
+                    console.warn('runApp not observed after timeout; ensuring fallback');
+                    status('no runApp observed — ensuring fallback');
+                    if (!document.querySelector('script[src="main.dart.js"]')) {
+                      var s2 = document.createElement('script'); s2.src = 'main.dart.js'; s2.type = 'application/javascript';
+                      s2.onload = function(){ console.log('main.dart.js loaded (timeout-insert)'); status('main.dart.js loaded (timeout)'); };
+                      s2.onerror = function(e){ console.error('main.dart.js failed to load (timeout-insert)', e); status('main.dart.js load FAILED (timeout)'); };
+                      document.head.appendChild(s2);
+                    }
+                  }
+                }, 2000);
+
               }).catch(function(e) { console.error('Engine initialization failed:', e); status('engine init failed: ' + (e && e.message || e)); });
             } else {
               console.warn('Loader delivered no initializeEngine.');
