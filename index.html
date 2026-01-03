@@ -186,6 +186,55 @@
         console.error('Runtime diagnostic failed:', e);
       }
     }, 1200);
+
+    // Take a snapshot of the first canvas (if any) and append as an image for debugging.
+    setTimeout(() => {
+      try {
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+          console.log('DEBUG: found canvas for snapshot', canvas.width, canvas.height, getComputedStyle(canvas).display);
+          try {
+            const data = canvas.toDataURL('image/png');
+            const img = document.createElement('img');
+            img.style.position = 'fixed';
+            img.style.right = '10px';
+            img.style.bottom = '10px';
+            img.style.width = '300px';
+            img.style.zIndex = '999999';
+            img.style.border = '3px solid rgba(0,0,0,0.6)';
+            img.title = 'Canvas snapshot';
+            img.src = data;
+            document.body.appendChild(img);
+            console.log('DEBUG: appended canvas snapshot; length', data.length);
+          } catch (e) {
+            console.warn('DEBUG: canvas toDataURL failed', e);
+          }
+        } else {
+          console.warn('DEBUG: no canvas found to snapshot');
+        }
+      } catch (e) {
+        console.error('DEBUG: canvas snapshot error', e);
+      }
+    }, 2200);
+
+    // Small route/status overlay to confirm what the app thinks the current URL is
+    (function(){
+      try {
+        const overlay = document.createElement('div');
+        overlay.id = 'deploy-route-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.right = '10px';
+        overlay.style.top = '10px';
+        overlay.style.padding = '6px 10px';
+        overlay.style.background = 'rgba(0,0,0,0.7)';
+        overlay.style.color = '#fff';
+        overlay.style.fontSize = '12px';
+        overlay.style.borderRadius = '6px';
+        overlay.style.zIndex = '999999';
+        overlay.textContent = 'DEBUG ROUTE: ' + window.location.pathname + (window.location.search || '');
+        document.body.appendChild(overlay);
+      } catch(e) { console.warn('DEBUG: overlay failed', e); }
+    })();
   </script>
   <div id="deploy-error-detail" style="position:fixed;bottom:10px;left:10px;right:10px;padding:10px;background:#fff1f1;border-left:4px solid #ff4d4f;color:#222;display:block;z-index:9998"></div>
 </body>
