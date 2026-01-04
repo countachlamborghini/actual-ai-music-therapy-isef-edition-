@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'providers.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/check_in_screen.dart';
 import 'screens/emotion_detection_screen.dart';
 import 'screens/frequency_player_screen.dart';
+import 'screens/adaptive_frequency_session_screen.dart';
 import 'screens/game_screen.dart';
 import 'screens/progress_screen.dart';
 
-void main() {
+void main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -21,12 +23,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = GoRouter(
       routes: [
-        GoRoute(path: '/', builder: (context, state) => const OnboardingScreen()),
-        GoRoute(path: '/checkin', builder: (context, state) => const CheckInScreen()),
-        GoRoute(path: '/emotion', builder: (context, state) => const EmotionDetectionScreen()),
-        GoRoute(path: '/frequency', builder: (context, state) => const FrequencyPlayerScreen()),
+        GoRoute(
+            path: '/', builder: (context, state) => const OnboardingScreen()),
+        GoRoute(
+            path: '/checkin',
+            builder: (context, state) => const CheckInScreen()),
+        GoRoute(
+            path: '/emotion',
+            builder: (context, state) => const EmotionDetectionScreen()),
+        GoRoute(
+            path: '/frequency',
+            builder: (context, state) => const FrequencyPlayerScreen()),
+        GoRoute(
+            path: '/adaptive-session',
+            builder: (context, state) =>
+                const AdaptiveFrequencySessionScreen()),
         GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
-        GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
+        GoRoute(
+            path: '/progress',
+            builder: (context, state) => const ProgressScreen()),
       ],
     );
 

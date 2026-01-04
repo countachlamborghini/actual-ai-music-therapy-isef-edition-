@@ -1,22 +1,21 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:html' as html;
-import 'dart:js' as js;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:js' as js;
 import '../providers.dart';
 
 class EmotionDetectionScreen extends ConsumerStatefulWidget {
   const EmotionDetectionScreen({super.key});
 
   @override
-  ConsumerState<EmotionDetectionScreen> createState() => _EmotionDetectionScreenState();
+  ConsumerState<EmotionDetectionScreen> createState() =>
+      _EmotionDetectionScreenState();
 }
 
-class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen> {
+class _EmotionDetectionScreenState
+    extends ConsumerState<EmotionDetectionScreen> {
   CameraController? controller;
   List<CameraDescription>? cameras;
   String currentEmotion = 'neutral';
@@ -26,6 +25,8 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
   Timer? detectionTimer;
   bool isDetecting = false;
   String videoElementId = 'emotion-video';
+  String? cameraError;
+  bool isInitializingCamera = true;
 
   @override
   void initState() {
@@ -35,25 +36,73 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
   }
 
   Future<void> _initializeCamera() async {
-    cameras = await availableCameras();
-    if (cameras != null && cameras!.isNotEmpty) {
-      controller = CameraController(cameras![0], ResolutionPreset.medium);
-      await controller!.initialize();
-      setState(() {});
-      _startDetection();
+    try {
+      cameras = await availableCameras();
+      if (cameras != null && cameras!.isNotEmpty) {
+        controller = CameraController(cameras![0], ResolutionPreset.medium);
+        await controller!.initialize();
+        setState(() {
+          isInitializingCamera = false;
+        });
+        _startDetection();
+      } else {
+        setState(() {
+          cameraError = 'No camera found on this device';
+          isInitializingCamera = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        cameraError = 'Camera permission denied or camera unavailable: $e';
+        isInitializingCamera = false;
+      });
+      print('Camera initialization error: $e');
     }
   }
 
   Future<void> _loadFaceApiModels() async {
-    // Load Face API models
-    js.context.callMethod('eval', ['''
-      async function loadModels() {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/');
-        await faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/');
-        console.log('Face API models loaded');
+    // Wait for Face API to be loaded - gracefully handle if unavailable
+    try {
+      int retries = 0;
+      while (retries < 30) {
+        try {
+          final faceApiAvailable = js.context['faceapi'] != null;
+          if (faceApiAvailable) {
+            // Load Face API models with error handling
+            js.context.callMethod('eval', [
+              '''
+              async function loadModels() {
+                try {
+                  const modelUrl = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
+                  await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
+                  await faceapi.nets.faceExpressionNet.loadFromUri(modelUrl);
+                  console.log('Face API models loaded successfully');
+                } catch (e) {
+                  console.warn('Face API models loading failed - emotion detection disabled:', e);
+                  window.faceApiLoaded = false;
+                }
+              }
+              loadModels();
+              window.faceApiLoaded = true;
+            '''
+            ]);
+            break;
+          }
+          retries++;
+          await Future.delayed(const Duration(milliseconds: 100));
+        } catch (e) {
+          retries++;
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
       }
-      loadModels();
-    ''']);
+
+      if (retries >= 30) {
+        print(
+            'Warning: Face API library not loaded after retries - emotion detection will be unavailable');
+      }
+    } catch (e) {
+      print('Error loading Face API models: $e');
+    }
   }
 
   void _startDetection() {
@@ -70,7 +119,8 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
 
     try {
       // Use JavaScript to access the camera video element and detect emotions
-      final result = js.context.callMethod('eval', ['''
+      final result = js.context.callMethod('eval', [
+        '''
         (async function() {
           try {
             // Find the video element created by the camera package
@@ -105,7 +155,8 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
             return 'neutral';
           }
         })()
-      ''']);
+      '''
+      ]);
 
       if (result != null && result is String && result != 'neutral') {
         _handleEmotionChange(result);
@@ -122,7 +173,9 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
         emotionStartTime = DateTime.now();
       } else {
         final duration = DateTime.now().difference(emotionStartTime!);
-        if (duration.inSeconds >= 5 && duration.inSeconds <= 7.5 && stableEmotion != newEmotion) {
+        if (duration.inSeconds >= 5 &&
+            duration.inSeconds <= 7.5 &&
+            stableEmotion != newEmotion) {
           setState(() {
             stableEmotion = newEmotion;
           });
@@ -174,7 +227,8 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
                   children: [
                     const Text(
                       'Continuous Emotion Detection',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -182,24 +236,84 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
+                    if (cameraError != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                              size: 32,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Camera Error',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              cameraError!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (isInitializingCamera)
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 12),
+                              Text('Initializing camera...'),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: controller != null &&
+                                controller!.value.isInitialized
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CameraPreview(controller!),
+                              )
+                            : const Center(child: CircularProgressIndicator()),
                       ),
-                      child: controller != null && controller!.value.isInitialized
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CameraPreview(controller!),
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Current Emotion: $currentEmotion',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Stable Emotion: $stableEmotion',
@@ -210,13 +324,41 @@ class _EmotionDetectionScreenState extends ConsumerState<EmotionDetectionScreen>
               ),
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () => context.go('/frequency'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+            if (cameraError == null)
+              ElevatedButton(
+                onPressed: () => context.go('/frequency'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text('Start Frequency Session'),
+              )
+            else
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        cameraError = null;
+                        isInitializingCamera = true;
+                      });
+                      _initializeCamera();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text('Retry Camera'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => context.go('/frequency'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                    ),
+                    child: const Text('Skip to Frequency Session'),
+                  ),
+                ],
               ),
-              child: const Text('Start Frequency Session'),
-            ),
           ],
         ),
       ),

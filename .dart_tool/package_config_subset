@@ -86,6 +86,10 @@ fl_chart
 3.2
 file:///home/codespace/.pub-cache/hosted/pub.dev/fl_chart-0.67.0/
 file:///home/codespace/.pub-cache/hosted/pub.dev/fl_chart-0.67.0/lib/
+flutter_dotenv
+2.12
+file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_dotenv-5.2.1/
+file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_dotenv-5.2.1/lib/
 flutter_lints
 3.1
 file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_lints-4.0.0/
@@ -110,6 +114,14 @@ hive_flutter
 2.12
 file:///home/codespace/.pub-cache/hosted/pub.dev/hive_flutter-1.1.0/
 file:///home/codespace/.pub-cache/hosted/pub.dev/hive_flutter-1.1.0/lib/
+http
+3.4
+file:///home/codespace/.pub-cache/hosted/pub.dev/http-1.6.0/
+file:///home/codespace/.pub-cache/hosted/pub.dev/http-1.6.0/lib/
+http_parser
+2.12
+file:///home/codespace/.pub-cache/hosted/pub.dev/http_parser-4.0.2/
+file:///home/codespace/.pub-cache/hosted/pub.dev/http_parser-4.0.2/lib/
 image
 3.0
 file:///home/codespace/.pub-cache/hosted/pub.dev/image-4.5.4/

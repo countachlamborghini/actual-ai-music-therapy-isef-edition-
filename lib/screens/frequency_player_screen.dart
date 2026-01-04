@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:html' as html;
 import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +10,8 @@ class FrequencyPlayerScreen extends ConsumerStatefulWidget {
   const FrequencyPlayerScreen({super.key});
 
   @override
-  ConsumerState<FrequencyPlayerScreen> createState() => _FrequencyPlayerScreenState();
+  ConsumerState<FrequencyPlayerScreen> createState() =>
+      _FrequencyPlayerScreenState();
 }
 
 class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
@@ -20,8 +20,10 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   String currentEmotion = 'neutral';
   String description = 'Universal healing frequency';
   bool isPlaying = false;
+  bool isLoading = false;
   Timer? emotionCheckTimer;
   Timer? audioMonitoringTimer;
+  String? audioError;
 
   // Audio monitoring using JavaScript
   bool audioMonitoringActive = false;
@@ -53,7 +55,8 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
   Future<void> _initializeAudioMonitoring() async {
     try {
       // Initialize audio monitoring using JavaScript
-      js.context.callMethod('eval', ['''
+      js.context.callMethod('eval', [
+        '''
         window.audioMonitoringActive = false;
         window.audioContext = null;
         window.analyser = null;
@@ -115,7 +118,8 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
             window.handleAbnormalNoiseCallback();
           }
         };
-      ''']);
+      '''
+      ]);
 
       // Start audio monitoring
       js.context.callMethod('startAudioMonitoring', []);
@@ -161,26 +165,53 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
     description = _getDescription(emotion);
 
     try {
+      setState(() {
+        isLoading = true;
+        audioError = null;
+      });
+
       await player.setUrl(url);
       await player.play();
+
       setState(() {
         isPlaying = true;
+        isLoading = false;
       });
     } catch (e) {
       print('Audio playback error: $e');
+      setState(() {
+        isLoading = false;
+        audioError = 'Failed to load audio: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Audio error: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
   String _getUrl(String emotion) {
+    // Using free tone generator URLs - these generate soothing audio
     const map = {
-      'happy': 'https://www.dropbox.com/scl/fi/.../528hz.mp3?rlkey=...&st=...', // 528 Hz - DNA Repair
-      'sad': 'https://www.dropbox.com/scl/fi/.../396hz.mp3?rlkey=...&st=...', // 396 Hz - Liberating Guilt
-      'angry': 'https://www.dropbox.com/scl/fi/.../174hz.mp3?rlkey=...&st=...', // 174 Hz - Pain Relief
-      'anxious': 'https://www.dropbox.com/scl/fi/.../396hz.mp3?rlkey=...&st=...', // 396 Hz - Liberating Guilt
-      'neutral': 'https://www.dropbox.com/scl/fi/.../432hz.mp3?rlkey=...&st=...', // 432 Hz - Universal
-      'surprised': 'https://www.dropbox.com/scl/fi/.../528hz.mp3?rlkey=...&st=...', // 528 Hz - Transformation
-      'disgusted': 'https://www.dropbox.com/scl/fi/.../285hz.mp3?rlkey=...&st=...', // 285 Hz - Tissue Healing
-      'fearful': 'https://www.dropbox.com/scl/fi/.../174hz.mp3?rlkey=...&st=...', // 174 Hz - Grounding
+      'happy':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', // 528 Hz - DNA Repair
+      'sad':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', // 396 Hz - Liberating Guilt
+      'angry':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', // 174 Hz - Pain Relief
+      'anxious':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', // 396 Hz - Liberating Guilt
+      'neutral':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', // 432 Hz - Universal
+      'surprised':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', // 528 Hz - Transformation
+      'disgusted':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', // 285 Hz - Tissue Healing
+      'fearful':
+          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', // 174 Hz - Grounding
     };
     return map[emotion] ?? map['neutral']!;
   }
@@ -211,17 +242,6 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
       'fearful': 'Pain Relief & Grounding',
     };
     return map[emotion] ?? 'Universal Healing';
-  }
-
-  void _togglePlayback() {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      player.play();
-    }
-    setState(() {
-      isPlaying = !isPlaying;
-    });
   }
 
   @override
@@ -256,32 +276,118 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
                   children: [
                     Text(
                       'Current Frequency: $currentFrequency',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       description,
-                      style: const TextStyle(fontSize: 16),
+                      style: Theme.of(context).textTheme.bodyLarge,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      'Emotion: $currentEmotion',
-                      style: const TextStyle(fontSize: 18),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer
+                            .withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Emotion: $currentEmotion',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                      ),
                     ),
+                    const SizedBox(height: 16),
+                    if (audioError != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                audioError!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (isLoading)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Loading audio...',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                          iconSize: 48,
-                          onPressed: _togglePlayback,
+                          icon: Icon(
+                            isPlaying ? Icons.pause_circle : Icons.play_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          iconSize: 64,
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  if (isPlaying) {
+                                    player.pause();
+                                  } else {
+                                    player.play();
+                                  }
+                                  setState(() {
+                                    isPlaying = !isPlaying;
+                                  });
+                                },
                         ),
                         const SizedBox(width: 16),
                         IconButton(
-                          icon: const Icon(Icons.stop),
-                          iconSize: 48,
+                          icon: Icon(
+                            Icons.stop_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          iconSize: 64,
                           onPressed: () {
                             player.stop();
                             setState(() {
@@ -303,12 +409,13 @@ class _FrequencyPlayerScreenState extends ConsumerState<FrequencyPlayerScreen> {
                   children: [
                     const Text(
                       'Session Monitoring',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       '• Real-time emotion detection active\n• Audio monitoring for safety\n• Automatic frequency adjustment\n• Session adapts to your emotional state',
-                      style: TextStyle(fontSize: 14),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
